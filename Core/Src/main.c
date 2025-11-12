@@ -31,6 +31,8 @@
 #include "b_l475e_iot01a2_conf.h"
 #include "b_l475e_iot01a2_bus.h"
 #include "BLE_conf.h"
+
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -61,6 +63,8 @@ PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 /* USER CODE BEGIN PV */
 char json_buffer[1024];
+volatile uint8_t flag_send_data = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -91,35 +95,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if (htim->Instance == TIM7)
     {
-//        switch (current_operation)
-//        {
-//            case read_vals:
-//                printf("Czytam wartości\n");
-//                HTS221_Read_Data();
-//				LSM6DSL_Read_Data();
-//				LIS3MDL_Read_Magnetic();
-//                current_operation = transmition; // zmiana stanu
-//                break;
-//
-//            case transmition:
-//                printf("Transmisja danych\n");
-//                if (j_johnson(json_buffer, sizeof(json_buffer)) == 0)
-//                	{
-//                		HAL_UART_Transmit(&huart1, (uint8_t*)json_buffer, strlen(json_buffer), HAL_MAX_DELAY);
-//                	}
-//                current_operation = sending_mess; // zmiana stanu
-//                break;
-//
-//            case sending_mess:
-//                printf("Wysyłam wiadomość\n");
-//                MX_BlueNRG_MS_Process();
-//                BLE_SendMessage("Hello from STM"); //Max 20 znaków
-//                current_operation = read_vals; // powrót do początku
-//                break;
-//
-//            default:
-//                break;
-//        }
+    	flag_send_data = 1;
     }
 }
 
@@ -134,6 +110,8 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+
+
 
   /* USER CODE END 1 */
 
@@ -173,22 +151,26 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	HTS221_Read_Data();
-	LSM6DSL_Read_Data();
-	LIS3MDL_Read_Magnetic();
-	HAL_Delay(4000);
 
-	if (j_johnson(json_buffer, sizeof(json_buffer)) == 0)
-	{
-		HAL_UART_Transmit(&huart1, (uint8_t*)json_buffer, strlen(json_buffer), HAL_MAX_DELAY);
-	}
-	HAL_Delay(1000);
+	  if (flag_send_data)
+	      {
+	          flag_send_data = 0;  // wyczyść flagę
+
+	          HTS221_Read_Data();
+	          LSM6DSL_Read_Data();
+	          LIS3MDL_Read_Magnetic();
+
+	          if (j_johnson(json_buffer, sizeof(json_buffer)) == 0)
+	          {
+	              HAL_UART_Transmit(&huart1, (uint8_t*)json_buffer, strlen(json_buffer), HAL_MAX_DELAY);
+	          }
+
+	          BLE_SendMessage("Hello from STM");
+	      }
     /* USER CODE END WHILE */
 
   MX_BlueNRG_MS_Process();
     /* USER CODE BEGIN 3 */
-  BLE_SendMessage("Hello from STM"); //Max 20 znaków
-  //HAL_Delay(2000);
   }
   /* USER CODE END 3 */
 }
@@ -344,7 +326,7 @@ static void MX_TIM7_Init(void)
   htim7.Instance = TIM7;
   htim7.Init.Prescaler = 39999;
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 1999;
+  htim7.Init.Period = 9999;
   htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
   {
