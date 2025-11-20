@@ -31,6 +31,8 @@
 #include "b_l475e_iot01a2_conf.h"
 #include "b_l475e_iot01a2_bus.h"
 #include "BLE_conf.h"
+
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,12 +55,16 @@ DFSDM_Channel_HandleTypeDef hdfsdm1_channel1;
 
 QSPI_HandleTypeDef hqspi;
 
+TIM_HandleTypeDef htim7;
+
 UART_HandleTypeDef huart1;
 
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 /* USER CODE BEGIN PV */
 char json_buffer[1024];
+volatile uint8_t flag_send_data = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -68,12 +74,31 @@ static void MX_DFSDM1_Init(void);
 static void MX_QUADSPI_Init(void);
 static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_TIM7_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+
+typedef enum {
+    read_vals = 0,
+    transmition,
+    sending_mess
+} operation;
+
+operation current_operation = read_vals; // zmienna globalna lub statyczna
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if (htim->Instance == TIM7)
+    {
+    	flag_send_data = 1;
+    }
+}
+
 
 /* USER CODE END 0 */
 
@@ -85,6 +110,8 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+
+
 
   /* USER CODE END 1 */
 
@@ -110,34 +137,40 @@ int main(void)
   MX_QUADSPI_Init();
   MX_USB_OTG_FS_PCD_Init();
   MX_USART1_UART_Init();
+  MX_TIM7_Init();
   MX_BlueNRG_MS_Init();
   /* USER CODE BEGIN 2 */
   BSP_I2C2_Init();
   LIS3MDL_Platform_Init();
   HTS221_Platform_Init();
   LSM6DSL_Platform_Init();
+  HAL_TIM_Base_Start_IT(&htim7);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	HTS221_Read_Data();
-	LSM6DSL_Read_Data();
-	LIS3MDL_Read_Magnetic();
-	HAL_Delay(1000);
 
-	if (j_johnson(json_buffer, sizeof(json_buffer)) == 0)
-	{
-		HAL_UART_Transmit(&huart1, (uint8_t*)json_buffer, strlen(json_buffer), HAL_MAX_DELAY);
-	}
-	HAL_Delay(1000);
+	  if (flag_send_data)
+	      {
+	          flag_send_data = 0;  // wyczyść flagę
+
+	          HTS221_Read_Data();
+	          LSM6DSL_Read_Data();
+	          LIS3MDL_Read_Magnetic();
+
+	          if (j_johnson(json_buffer, sizeof(json_buffer)) == 0)
+	          {
+	              HAL_UART_Transmit(&huart1, (uint8_t*)json_buffer, strlen(json_buffer), HAL_MAX_DELAY);
+	          }
+
+	          BLE_SendMessage("Hello from STM");
+	      }
     /* USER CODE END WHILE */
 
   MX_BlueNRG_MS_Process();
     /* USER CODE BEGIN 3 */
-  BLE_SendMessage("Hello from STM"); //Max 20 znaków
-  //HAL_Delay(2000);
   }
   /* USER CODE END 3 */
 }
@@ -270,6 +303,44 @@ static void MX_QUADSPI_Init(void)
   /* USER CODE BEGIN QUADSPI_Init 2 */
 
   /* USER CODE END QUADSPI_Init 2 */
+
+}
+
+/**
+  * @brief TIM7 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM7_Init(void)
+{
+
+  /* USER CODE BEGIN TIM7_Init 0 */
+
+  /* USER CODE END TIM7_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM7_Init 1 */
+
+  /* USER CODE END TIM7_Init 1 */
+  htim7.Instance = TIM7;
+  htim7.Init.Prescaler = 39999;
+  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim7.Init.Period = 19999;
+  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM7_Init 2 */
+
+  /* USER CODE END TIM7_Init 2 */
 
 }
 
