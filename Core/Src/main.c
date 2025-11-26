@@ -99,6 +99,25 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
 }
 
+void BLE_SendLongMessage(char* data) {
+    uint16_t len = strlen(data);
+    uint16_t index = 0;
+    uint8_t chunk_size = 20;
+    char packet[21];
+
+    while (index < len) {
+        uint8_t bytes_to_send = (len - index) >= chunk_size ? chunk_size : (len - index);
+
+        memcpy(packet, &data[index], bytes_to_send);
+        packet[bytes_to_send] = '\0';
+
+        BLE_SendMessage(packet);
+
+        index += bytes_to_send;
+
+        HAL_Delay(30);
+    }
+}
 
 /* USER CODE END 0 */
 
@@ -165,7 +184,9 @@ int main(void)
 	              HAL_UART_Transmit(&huart1, (uint8_t*)json_buffer, strlen(json_buffer), HAL_MAX_DELAY);
 	          }
 
-	          BLE_SendMessage("Hello from STM");
+//	          BLE_SendMessage("Hello from STM");
+//	          BLE_SendMessage((char*)json_buffer); nie dziala
+	          BLE_SendLongMessage((char*)json_buffer); //dziala (hopefully)
 	      }
     /* USER CODE END WHILE */
 
