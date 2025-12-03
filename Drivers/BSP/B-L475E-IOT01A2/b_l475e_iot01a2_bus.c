@@ -1025,7 +1025,7 @@ __weak HAL_StatusTypeDef MX_SPI3_Init(SPI_HandleTypeDef* hspi)
   hspi->Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi->Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi->Init.NSS = SPI_NSS_SOFT;
-  hspi->Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi->Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
   hspi->Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi->Init.TIMode = SPI_TIMODE_DISABLE;
   hspi->Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -1076,6 +1076,9 @@ static void SPI3_MspInit(SPI_HandleTypeDef* spiHandle)
     GPIO_InitStruct.Alternate = BUS_SPI3_MOSI_GPIO_AF;
     HAL_GPIO_Init(BUS_SPI3_MOSI_GPIO_PORT, &GPIO_InitStruct);
 
+    /* Peripheral interrupt init */
+    HAL_NVIC_SetPriority(SPI3_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(SPI3_IRQn);
   /* USER CODE BEGIN SPI3_MspInit 1 */
 
   /* USER CODE END SPI3_MspInit 1 */
@@ -1099,6 +1102,9 @@ static void SPI3_MspDeInit(SPI_HandleTypeDef* spiHandle)
     HAL_GPIO_DeInit(BUS_SPI3_MISO_GPIO_PORT, BUS_SPI3_MISO_GPIO_PIN);
 
     HAL_GPIO_DeInit(BUS_SPI3_MOSI_GPIO_PORT, BUS_SPI3_MOSI_GPIO_PIN);
+
+    /* Peripheral interrupt Deinit*/
+    HAL_NVIC_DisableIRQ(SPI3_IRQn);
 
   /* USER CODE BEGIN SPI3_MspDeInit 1 */
 

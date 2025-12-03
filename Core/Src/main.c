@@ -32,6 +32,8 @@
 #include "b_l475e_iot01a2_bus.h"
 #include "BLE_conf.h"
 
+#include "wifi.h"
+
 #include "string.h"
 /* USER CODE END Includes */
 
@@ -164,6 +166,19 @@ int main(void)
   HTS221_Platform_Init();
   LSM6DSL_Platform_Init();
   HAL_TIM_Base_Start_IT(&htim7);
+
+  __disable_irq();
+
+  if (WIFI_Init() != WIFI_STATUS_OK) {
+       Error_Handler();
+  }
+
+  if (WIFI_ConfigureAP((uint8_t*)"STM32_Combo", (uint8_t*)"password", WIFI_ECN_WPA2_PSK, 6, 8) != WIFI_STATUS_OK) {
+       Error_Handler();
+  }
+
+  __enable_irq();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -615,6 +630,12 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void EXTI1_IRQHandler(void)
+{
+  /* Pass control to the HAL Library */
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1);
+}
 
 /* USER CODE END 4 */
 
