@@ -1,0 +1,5 @@
+Co zrobiłam: skrpyt w Pythonie został rozwinięty o przesyłanie danych na ThingsBoarda (nowy plik: plot_and_ThingsBoard.py)
+
+W skrypcie należy uzupełnić 'THINGSBOARD_URL' oraz ewentualnie zmienić port COM.
+'THINGSBOARD_URL' można pobrać z pola Check connectivity, z komendy 'curl' dla danego urządzenia.
+Przy pomocy Dashboarda można wyświetlać wartości pomiarów z czujników.
