@@ -32,7 +32,8 @@
 #include "b_l475e_iot01a2_bus.h"
 #include "BLE_conf.h"
 
-#include "wifi.h"
+//#include "wifi.h"
+#include "ms_ism43362-m3g-l44.h"
 
 #include "string.h"
 /* USER CODE END Includes */
@@ -83,6 +84,19 @@ static void MX_TIM7_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+#define DEBUG_printf
+#ifdef DEBUG_printf
+int _write(int file, char *ptr, int len)
+{
+  int i = 0;
+  for (i = 0; i < len; i++)
+  {
+    ITM_SendChar((*ptr++));
+  }
+  return len;
+}
+#endif
 
 
 typedef enum {
@@ -167,17 +181,19 @@ int main(void)
   LSM6DSL_Platform_Init();
   HAL_TIM_Base_Start_IT(&htim7);
 
-  __disable_irq();
+  MX_SPI3_Init(&hspi3);
 
-  if (WIFI_Init() != WIFI_STATUS_OK) {
-       Error_Handler();
-  }
+  printf("Starting...\n");
 
-  if (WIFI_ConfigureAP((uint8_t*)"STM32_Combo", (uint8_t*)"password", WIFI_ECN_WPA2_PSK, 6, 8) != WIFI_STATUS_OK) {
-       Error_Handler();
-  }
+ //Custom_WIFI_Test();
 
-  __enable_irq();
+//  if (WIFI_Init() != WIFI_STATUS_OK) {
+//       Error_Handler();
+//  }
+//
+//  if (WIFI_ConfigureAP((uint8_t*)"STM32_Combo", (uint8_t*)"password", WIFI_ECN_WPA2_PSK, 6, 8) != WIFI_STATUS_OK) {
+//       Error_Handler();
+//  }
 
   /* USER CODE END 2 */
 
