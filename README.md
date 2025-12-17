@@ -1,7 +1,7 @@
 # STM32 IoT Project – HTS221, LIS3MDL, LSM6DSL, JSON, Bluetooth
 
 Projekt pokazuje sposób obsługi trzech czujników mierzących parametry środowiskowe na płytce **B-L475E-IOT01A2**.  
-Wszystkie czujniki komunikują się z mikrokontrolerem przez magistralę **I2C2**, a dane pomiarowe są wysyłane przez **UART1** w formacie tekstowym.
+Wszystkie czujniki komunikują się z mikrokontrolerem przez magistralę **I2C**, a dane pomiarowe są wysyłane przez **UART1** w formacie tekstowym.
 
 ## Wykorzystane czujniki
 
@@ -16,6 +16,8 @@ Po uruchomieniu mikrokontrolera każdy czujnik jest inicjalizowany. Użyktkownic
 - temperatura i wilgotność z HTS221
 - wektor pola magnetycznego z LIS3MDL
 - przyspieszenie i prędkość kątowa z LSM6DSL
+
+Wywoływanie funkcji obsługujących pomiary odbywa się w Timerze .... (tu mozna napisac jak sie nazywaja te funkcje)
 
 ## Opis plików źródłowych
 
@@ -39,7 +41,13 @@ MX_BlueNRG_MS_Init();- funkcja odpowiedzialna za inicjalizację stosu BLE, inicj
 MX_BlueNRG_MS_Process();- odpowiada za przetwarzanie zdarzeń BLE takich jak połączenia, rozłączenia, odczyty i zapisy charakterystyk oraz komunikację
 BLE_SendMessage();- odpowiada za wysłanie wiadomości
 
+Napisana została funkcja BLE_SendLongMessage(), ktora przesyla plik .json w kilku wiadomosciach BLE notify.
+
 **Do komunikacji z mikrokontrolerem wykorzystano aplikację nRF Connect.**
+
+### Komunikacja Wi-Fi 
+
+Do uzupelnienia
 
 **Odbiór testowej informacji**
 
@@ -52,6 +60,10 @@ Funkcja korzysta z snprintf() do bezpiecznego formatowania danych w postaci teks
 Jeśli długość wynikowego łańcucha przekroczy rozmiar bufora lub nastąpi błąd formatowania, funkcja zwraca kod błędu.
 
 <img width="748" height="326" alt="Zrzut ekranu 2025-11-5 o 18 34 37" src="https://github.com/user-attachments/assets/a93cb34e-984e-43ac-bfc7-a6239a748c1a" />
+
+Utworzony zostal plik plot_and_ThingsBoard.py, który zbiera dane z portu szeregowego i prezentuje je w postaci wykresów oraz przesyła dane na ThingsBoard.
+
+tu fotka
 
 ## Agregacja danych
 
