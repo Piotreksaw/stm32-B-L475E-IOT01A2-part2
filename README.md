@@ -140,5 +140,5 @@ Do uzupelnienia
 ### Generacja wykresów i przesłanie do Thingsboard
 
 Rolą programu **plot_and_ThingsBoard.py** jest pobranie danych z portu UART, odczytane dane są prezentowane na wykresie stoworzonym przy użyciu biblioteki **matplotlib**. Kolejną rolą programu jest wysłanie danych do strony ThingBoard, gdzie dane mogą zostać wykorzystane wedle uznania użytkownika :)
+![0170bc87-340e-4f26-8bce-a52e8d4e3ebd](https://github.com/user-attachments/assets/ed88a47b-7099-4944-a10e-0c77d11efe6d)
 
-## MIEJSCE NA ZDJĘCIE TBD
