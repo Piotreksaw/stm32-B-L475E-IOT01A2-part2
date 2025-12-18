@@ -55,7 +55,7 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-extern SPI_HandleTypeDef hspi3;
+extern SPI_HandleTypeDef hspi;
 extern TIM_HandleTypeDef htim7;
 extern UART_HandleTypeDef huart1;
 /* USER CODE BEGIN EV */
@@ -257,7 +257,7 @@ void SPI3_IRQHandler(void)
   /* USER CODE BEGIN SPI3_IRQn 0 */
 
   /* USER CODE END SPI3_IRQn 0 */
-  HAL_SPI_IRQHandler(&hspi3);
+  HAL_SPI_IRQHandler(&hspi);
   /* USER CODE BEGIN SPI3_IRQn 1 */
 
   /* USER CODE END SPI3_IRQn 1 */

@@ -57,9 +57,9 @@ extern osMutexId es_wifi_mutex;
 #define ES_WIFI_RTOS_REV_SIZE                       16
 
 #define ES_WIFI_DATA_SIZE                           2000  /*Increased from 1400 to fit scan result.*/
-#define ES_WIFI_MAX_DETECTED_AP                     10
+#define ES_WIFI_MAX_DETECTED_AP                     20
    
-#define ES_WIFI_TIMEOUT                             30000
+#define ES_WIFI_TIMEOUT                             0x0FFF
                                                     
 #define ES_WIFI_USE_PING                            1
 #define ES_WIFI_USE_AWS                             0

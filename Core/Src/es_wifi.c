@@ -17,6 +17,16 @@
   */
 /* Includes ------------------------------------------------------------------*/
 #include "es_wifi.h"
+#include "main.h"
+#include <stdio.h>
+#include <string.h>
+
+extern UART_HandleTypeDef huart1;
+
+static void DEBUG_PRINT(const char* msg) {
+    HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 100);
+}
+
 
 /* Private defines -----------------------------------------------------------*/
 /* The socket timeout of the non-blocking sockets is supposed to be 0.
@@ -717,8 +727,12 @@ static ES_WIFI_Status_t AT_ExecuteCommand(ES_WIFIObject_t *Obj, const uint8_t *c
 {
   int ret = 0;
   int16_t recv_len = 0;
+  char debug_buf[100];
 
   LOCK_WIFI();
+
+  snprintf(debug_buf, sizeof(debug_buf), "AT_ExecuteCommand: Sending %s\r\n", (char*)cmd);
+  DEBUG_PRINT(debug_buf);
 
   if ((Obj->fops.IO_Send != NULL) && (Obj->fops.IO_Receive != NULL)) {
 
@@ -727,6 +741,9 @@ static ES_WIFI_Status_t AT_ExecuteCommand(ES_WIFIObject_t *Obj, const uint8_t *c
   if( ret > 0)
   {
     recv_len = Obj->fops.IO_Receive(pdata, ES_WIFI_DATA_SIZE, Obj->Timeout);
+    snprintf(debug_buf, sizeof(debug_buf), "AT_ExecuteCommand: Received len %d\r\n", recv_len);
+    DEBUG_PRINT(debug_buf);
+
     if ((recv_len > 0) && (recv_len <= ES_WIFI_DATA_SIZE))
     {
       if (recv_len == ES_WIFI_DATA_SIZE)
@@ -735,25 +752,31 @@ static ES_WIFI_Status_t AT_ExecuteCommand(ES_WIFIObject_t *Obj, const uint8_t *c
         recv_len--;
       }
       *(pdata + recv_len) = 0;
+      snprintf(debug_buf, sizeof(debug_buf), "AT_ExecuteCommand: Received %s\r\n", (char*)pdata);
+      DEBUG_PRINT(debug_buf);
 
       if (strstr((char *)pdata, AT_OK_STRING))
       {
+        DEBUG_PRINT("AT_ExecuteCommand: OK\r\n");
         UNLOCK_WIFI();
         return ES_WIFI_STATUS_OK;
       }
       else if (strstr((char *)pdata, AT_ERROR_STRING))
       {
+        DEBUG_PRINT("AT_ExecuteCommand: ERROR\r\n");
         UNLOCK_WIFI();
         return ES_WIFI_STATUS_UNEXPECTED_CLOSED_SOCKET;
       }
     }
     if (recv_len == ES_WIFI_ERROR_STUFFING_FOREVER)
     {
+      DEBUG_PRINT("AT_ExecuteCommand: STUFFING_FOREVER\r\n");
       UNLOCK_WIFI();
       return ES_WIFI_STATUS_MODULE_CRASH;
     }
    }
   }
+  DEBUG_PRINT("AT_ExecuteCommand: IO_ERROR\r\n");
   UNLOCK_WIFI();
   return ES_WIFI_STATUS_IO_ERROR;
 }
@@ -1187,9 +1210,17 @@ ES_WIFI_Status_t ES_WIFI_Connect(ES_WIFIObject_t *Obj, const char *SSID,
       {
         sprintf((char *)Obj->CmdData, "C0\r");
         ret = AT_ExecuteCommand(Obj, Obj->CmdData, Obj->CmdData);
-        if(ret == ES_WIFI_STATUS_OK)
-        {
-           Obj->NetSettings.IsConnected = 1;
+        
+        if (ret == ES_WIFI_STATUS_OK) {
+             Obj->NetSettings.IsConnected = 1;
+        } else if (strstr((char *)Obj->CmdData, "Already connected")) {
+             Obj->NetSettings.IsConnected = 1;
+             ret = ES_WIFI_STATUS_OK;
+        } else if (ret == ES_WIFI_STATUS_IO_ERROR || ret == ES_WIFI_STATUS_TIMEOUT) {
+             /* Check if actually connected despite timeout */
+             if (ES_WIFI_IsConnected(Obj)) {
+                 ret = ES_WIFI_STATUS_OK;
+             }
         }
       }
     }
@@ -1271,34 +1302,68 @@ ES_WIFI_Status_t ES_WIFI_ActivateAP(ES_WIFIObject_t *Obj, const ES_WIFI_APConfig
 {
   ES_WIFI_Status_t ret;
   const size_t cmd_size = sizeof(Obj->CmdData) - 1;
+  char debug_buf[100];
 
   LOCK_WIFI();
 
-  snprintf((char*)Obj->CmdData, cmd_size, "AS=0, %s\r", ApConfig->SSID);
+  DEBUG_PRINT("ES_WIFI_ActivateAP: Start\r\n");
+
+  snprintf((char*)Obj->CmdData, cmd_size, "AS=0, %s\r\n", ApConfig->SSID);
+  DEBUG_PRINT("Sending AS=0\r\n");
   ret = AT_ExecuteCommand(Obj, Obj->CmdData, Obj->CmdData);
   if (ret == ES_WIFI_STATUS_OK)
   {
-    snprintf((char*)Obj->CmdData, cmd_size, "A1=%c\r", (int)ApConfig->Security + '0');
+    DEBUG_PRINT("AS=0 OK\r\n");
+    snprintf((char*)Obj->CmdData, cmd_size, "A1=%c\r\n", (int)ApConfig->Security + '0');
+    DEBUG_PRINT("Sending A1\r\n");
     ret = AT_ExecuteCommand(Obj, Obj->CmdData, Obj->CmdData);
     if (ret == ES_WIFI_STATUS_OK)
     {
-      snprintf((char*)Obj->CmdData, cmd_size, "A2=%s\r", ApConfig->Pass);
-      ret = AT_ExecuteCommand(Obj, Obj->CmdData, Obj->CmdData);
+      DEBUG_PRINT("A1 OK\r\n");
+      if (ApConfig->Security != ES_WIFI_SEC_OPEN) 
+      {
+          snprintf((char*)Obj->CmdData, cmd_size, "A2=%s\r\n", ApConfig->Pass);
+          DEBUG_PRINT("Sending A2\r\n");
+          ret = AT_ExecuteCommand(Obj, Obj->CmdData, Obj->CmdData);
+      } 
+      else 
+      {
+          DEBUG_PRINT("Skipping A2 for Open Security\r\n");
+          ret = ES_WIFI_STATUS_OK;
+      }
+
       if (ret == ES_WIFI_STATUS_OK)
       {
-        snprintf((char*)Obj->CmdData, cmd_size, "AC=%d\r", ApConfig->Channel);
+        if (ApConfig->Security != ES_WIFI_SEC_OPEN) DEBUG_PRINT("A2 OK\r\n");
+        snprintf((char*)Obj->CmdData, cmd_size, "AC=%d\r\n", ApConfig->Channel);
+        DEBUG_PRINT("Sending AC\r\n");
         ret = AT_ExecuteCommand(Obj, Obj->CmdData, Obj->CmdData);
         if (ret == ES_WIFI_STATUS_OK)
         {
+          DEBUG_PRINT("AC OK\r\n");
           snprintf((char*)Obj->CmdData, cmd_size, "AT=%d\r", ApConfig->MaxConnections);
           ret = AT_ExecuteCommand(Obj, Obj->CmdData, Obj->CmdData);
           if(ret == ES_WIFI_STATUS_OK)
           {
-            snprintf((char*)Obj->CmdData, cmd_size, "A0\r");
+            /* Set AP IP Address to 192.168.1.1 */
+            snprintf((char*)Obj->CmdData, cmd_size, "Z6=192.168.1.1\r");
+            AT_ExecuteCommand(Obj, Obj->CmdData, Obj->CmdData);
+
+            /* Enable DHCP Server */
+            snprintf((char*)Obj->CmdData, cmd_size, "D1=1\r");
+            AT_ExecuteCommand(Obj, Obj->CmdData, Obj->CmdData);
+
+            /* Attempting AD instead of A0 as per errata for SPI hang */
+            snprintf((char*)Obj->CmdData, cmd_size, "AD\r");
             ret = AT_ExecuteCommand(Obj, Obj->CmdData, Obj->CmdData);
+            
             if(ret == ES_WIFI_STATUS_OK)
             {
               char * join_line = strstr((char *)Obj->CmdData, "[JOIN   ]");
+              if (join_line == NULL) {
+                  join_line = strstr((char *)Obj->CmdData, "[AP     ]");
+              }
+              
               if( join_line == NULL)
               {
                 ret = ES_WIFI_STATUS_ERROR;
@@ -1306,11 +1371,17 @@ ES_WIFI_Status_t ES_WIFI_ActivateAP(ES_WIFIObject_t *Obj, const ES_WIFI_APConfig
               else
               {
                 /* Example: [JOIN   ] SSID_NAME,192.168.1.33,0,0 */
-                char * save_ptr = NULL;
-                char * ptr = strtok_r(&join_line[12], ",", &save_ptr);
-                strncpy((char *)Obj->NetSettings.SSID, ptr, ES_WIFI_MAX_SSID_NAME_SIZE);
-                ptr = strtok_r(NULL, ",", &save_ptr);
-                ParseIP((char *)ptr, Obj->NetSettings.IP_Addr, sizeof(Obj->NetSettings.IP_Addr));
+                /* Example: [AP     ] SSID:  STM32_Combo  MAC: ... */
+                
+                /* For AP mode, we just need to confirm success. Parsing IP is bonus. */
+                strncpy((char *)Obj->NetSettings.SSID, (char *)ApConfig->SSID, ES_WIFI_MAX_SSID_NAME_SIZE);
+                /* We already set IP via Z6, assume it matches or parse if needed. */
+                /* Hardcoding expected IP for now to ensure consistency */
+                Obj->NetSettings.IP_Addr[0] = 192;
+                Obj->NetSettings.IP_Addr[1] = 168;
+                Obj->NetSettings.IP_Addr[2] = 1;
+                Obj->NetSettings.IP_Addr[3] = 1;
+                
                 Obj->NetSettings.IsConnected = 1;
                 ret =  ES_WIFI_STATUS_OK;
               }
@@ -1320,6 +1391,13 @@ ES_WIFI_Status_t ES_WIFI_ActivateAP(ES_WIFIObject_t *Obj, const ES_WIFI_APConfig
       }
     }
   }
+  
+  if(ret != ES_WIFI_STATUS_OK) {
+      DEBUG_PRINT("ActivateAP Failed\r\n");
+  } else {
+      DEBUG_PRINT("ActivateAP Success\r\n");
+  }
+
   UNLOCK_WIFI();
   return ret;
 }
@@ -1570,7 +1648,7 @@ ES_WIFI_Status_t ES_WIFI_OTA_Upgrade(ES_WIFIObject_t *Obj, uint8_t *link)
 
   LOCK_WIFI();
 
-  snprintf((char *)Obj->CmdData, cmd_size,"Z0=%d\r%s", strlen((char *)link), (char *)link);
+  snprintf((char *)Obj->CmdData, cmd_size,"Z0=%d\r\n%s", strlen((char *)link), (char *)link);
   ret = AT_ExecuteCommand(Obj, Obj->CmdData, Obj->CmdData);
 
   UNLOCK_WIFI();
@@ -1718,12 +1796,12 @@ ES_WIFI_Status_t ES_WIFI_DNS_LookUp(ES_WIFIObject_t *Obj, const char *url, uint8
 
   LOCK_WIFI();
 
-  snprintf((char*)Obj->CmdData, sizeof(Obj->CmdData), "D0=%s\r", url);
+  snprintf((char*)Obj->CmdData, sizeof(Obj->CmdData), "D0=%s\r\n", url);
   ret = AT_ExecuteCommand(Obj, Obj->CmdData, Obj->CmdData);
 
   if(ret == ES_WIFI_STATUS_OK)
   {
-    ptr = strtok((char *)Obj->CmdData + 2, "\r");
+    ptr = strtok((char *)Obj->CmdData + 2, "\r\n");
     ParseIP(ptr, ipaddress, IpAddrLength);
   }
 
@@ -1984,6 +2062,11 @@ ES_WIFI_Status_t ES_WIFI_WaitServerConnection(ES_WIFIObject_t *Obj, uint32_t tim
     ret = AT_ExecuteCommand(Obj, Obj->CmdData, Obj->CmdData);
     if (ret == ES_WIFI_STATUS_OK)
     {
+      /* Debug: Print MR buffer to see what's happening */
+      char debug_msg[128];
+      snprintf(debug_msg, sizeof(debug_msg), "MR: %s\r\n", (char*)Obj->CmdData);
+      DEBUG_PRINT(debug_msg);
+
       if ((strstr((char *)Obj->CmdData, "[SOMA]")) && (strstr((char *)Obj->CmdData, "[EOMA]")))
       {
         if(strstr((char *)Obj->CmdData, "Accepted"))

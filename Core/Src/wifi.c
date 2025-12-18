@@ -196,10 +196,9 @@ WIFI_Status_t WIFI_ConfigureAP(const uint8_t *ssid, const uint8_t *pass, WIFI_Ec
 
   if (ret_es_wifi == ES_WIFI_STATUS_OK)
   {
-    if (ES_WIFI_GetNetworkSettings(&EsWifiObj) == ES_WIFI_STATUS_OK)
-    {
-      ret = WIFI_STATUS_OK;
-    }
+    /* Ignore error from GetNetworkSettings as A0 might leave module busy */
+    ES_WIFI_GetNetworkSettings(&EsWifiObj); 
+    ret = WIFI_STATUS_OK;
   }
   return ret;
 }

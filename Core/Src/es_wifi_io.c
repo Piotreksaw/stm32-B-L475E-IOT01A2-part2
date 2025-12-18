@@ -156,7 +156,7 @@ int8_t SPI_WIFI_Init(uint16_t mode)
     hspi.Init.CLKPolarity       = SPI_POLARITY_LOW;
     hspi.Init.CLKPhase          = SPI_PHASE_1EDGE;
     hspi.Init.NSS               = SPI_NSS_SOFT;
-    hspi.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8; /* 80/8= 10MHz (Inventek WIFI module supports up to 20MHz)*/
+    hspi.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64; /* Very slow for max stability */
     hspi.Init.FirstBit          = SPI_FIRSTBIT_MSB;
     hspi.Init.TIMode            = SPI_TIMODE_DISABLE;
     hspi.Init.CRCCalculation    = SPI_CRCCALCULATION_DISABLE;
@@ -283,6 +283,11 @@ static int wait_cmddata_rdy_rising_event(int timeout)
   int tickstart = HAL_GetTick();
   while (cmddata_rdy_rising_event == 1)
   {
+    if (WIFI_IS_CMDDATA_READY())
+    {
+      cmddata_rdy_rising_event = 0;
+      return 0;
+    }
     if((HAL_GetTick() - tickstart ) > timeout)
     {
       return -1;

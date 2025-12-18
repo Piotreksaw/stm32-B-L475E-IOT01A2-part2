@@ -32,8 +32,7 @@
 #include "b_l475e_iot01a2_bus.h"
 #include "BLE_conf.h"
 
-//#include "wifi.h"
-#include "ms_ism43362-m3g-l44.h"
+#include "wifi.h"
 
 #include "string.h"
 /* USER CODE END Includes */
@@ -168,32 +167,164 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DFSDM1_Init();
-  MX_QUADSPI_Init();
-  MX_USB_OTG_FS_PCD_Init();
+//  MX_DFSDM1_Init();
+//  MX_QUADSPI_Init();
+//  MX_USB_OTG_FS_PCD_Init();
   MX_USART1_UART_Init();
-  MX_TIM7_Init();
-  MX_BlueNRG_MS_Init();
+//  MX_TIM7_Init();
+//  MX_BlueNRG_MS_Init();
   /* USER CODE BEGIN 2 */
-  BSP_I2C2_Init();
-  LIS3MDL_Platform_Init();
-  HTS221_Platform_Init();
-  LSM6DSL_Platform_Init();
-  HAL_TIM_Base_Start_IT(&htim7);
-
-  MX_SPI3_Init(&hspi3);
-
-  printf("Starting...\n");
-
- //Custom_WIFI_Test();
-
-//  if (WIFI_Init() != WIFI_STATUS_OK) {
-//       Error_Handler();
-//  }
+//  BSP_I2C2_Init();
+//  LIS3MDL_Platform_Init();
+//  HTS221_Platform_Init();
+//  LSM6DSL_Platform_Init();
+//  HAL_TIM_Base_Start_IT(&htim7);
 //
-//  if (WIFI_ConfigureAP((uint8_t*)"STM32_Combo", (uint8_t*)"password", WIFI_ECN_WPA2_PSK, 6, 8) != WIFI_STATUS_OK) {
-//       Error_Handler();
-//  }
+//  MX_SPI3_Init(&hspi3);
+
+  if (WIFI_Init() != WIFI_STATUS_OK) {
+	  while (1)
+	  {
+		  HAL_Delay(50); // Reduce delay to keep loop responsive
+		  HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin); // Optional LED toggle
+	  }
+	  //Error_Handler();
+  }
+
+  char msg_buf[128];
+  sprintf(msg_buf, "Testing Scan...\r\n");
+  HAL_UART_Transmit(&huart1, (uint8_t*)msg_buf, strlen(msg_buf), 100);
+
+  WIFI_APs_t APs;
+  if (WIFI_ListAccessPoints(&APs, 20) == WIFI_STATUS_OK) {
+      sprintf(msg_buf, "Scan Success. Found %d APs\r\n", APs.count);
+      HAL_UART_Transmit(&huart1, (uint8_t*)msg_buf, strlen(msg_buf), 100);
+      for(int i=0; i<APs.count; i++) {
+          sprintf(msg_buf, "AP %2d: %s, RSSI: %d Enc: %d\r\n", i+1, APs.ap[i].SSID, APs.ap[i].RSSI, (int)APs.ap[i].Ecn);
+          HAL_UART_Transmit(&huart1, (uint8_t*)msg_buf, strlen(msg_buf), 100);
+      }
+  } else {
+      sprintf(msg_buf, "Scan Failed\r\n");
+      HAL_UART_Transmit(&huart1, (uint8_t*)msg_buf, strlen(msg_buf), 100);
+  }
+
+#if 1
+  uint8_t channel = 1;
+  uint8_t max_conn = 4;
+  if (WIFI_ConfigureAP((uint8_t*)"STM32_Combo", (uint8_t*)"password", WIFI_ECN_WPA2_PSK, channel, max_conn) != WIFI_STATUS_OK) {
+	  while (1)
+	  {
+		  HAL_Delay(50); // Reduce delay to keep loop responsive
+		  HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin); // Optional LED toggle
+	  }
+	  //Error_Handler();
+  }
+
+  uint8_t ip_addr[4];
+  if (WIFI_GetIP_Address(ip_addr, 4) == WIFI_STATUS_OK) {
+      char msg_buf[64];
+      sprintf(msg_buf, "AP Started. IP: %d.%d.%d.%d\r\n", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3]);
+      HAL_UART_Transmit(&huart1, (uint8_t*)msg_buf, strlen(msg_buf), 100);
+  } else {
+      HAL_UART_Transmit(&huart1, (uint8_t*)"AP Started, but could not get IP address.\r\n", 45, 100);
+  }
+#else
+  {
+	  int connect_tries = 0;
+	  const char* ssid = "SpyAPx5";        /////////////// Set SDID here!!!!
+	  const char* passwd = "";  /////////////// Set password here!!!!
+	  bool connected = false;
+	  char msg[64];
+	  
+	  sprintf(msg, "Connecting to %s...\r\n", ssid);
+	  HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 100);
+	  
+	  while (connect_tries < 5) {
+	      connect_tries++;
+		  if (WIFI_Connect(ssid, passwd, WIFI_ECN_WPA2_PSK) == WIFI_STATUS_OK) {
+		      sprintf(msg, "Connected to %s\r\n", ssid);
+		      HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 100);
+		      connected = true;
+		      break;
+		  } else {
+		      sprintf(msg, "Connection attempt %d failed\r\n", connect_tries);
+		      HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 100);
+		      HAL_Delay(1000);
+		  }
+	  }
+	  
+	  if (!connected) {
+	      HAL_UART_Transmit(&huart1, (uint8_t*)"Failed to connect after 5 attempts\r\n", 36, 100);
+	      while (1)
+	      {
+	    	  HAL_Delay(50); // Reduce delay to keep loop responsive
+	    	  HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin); // Optional LED toggle
+	      }
+	      //Error_Handler();
+	  }
+	  
+	  /* Get IP assigned by Router */
+      uint8_t ip_addr[4];
+      if (WIFI_GetIP_Address(ip_addr, 4) == WIFI_STATUS_OK) {
+          char msg_buf[64];
+          sprintf(msg_buf, "Station IP: %d.%d.%d.%d\r\n", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3]);
+          HAL_UART_Transmit(&huart1, (uint8_t*)msg_buf, strlen(msg_buf), 100);
+      }
+  }
+#endif
+
+  uint8_t ip_addr[4];
+  if (WIFI_GetIP_Address(ip_addr, 4) == WIFI_STATUS_OK) {
+      char msg_buf[64];
+      sprintf(msg_buf, "AP Started. IP: %d.%d.%d.%d\r\n", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3]);
+      HAL_UART_Transmit(&huart1, (uint8_t*)msg_buf, strlen(msg_buf), 100);
+  } else {
+      HAL_UART_Transmit(&huart1, (uint8_t*)"AP Started, but could not get IP address.\r\n", 45, 100);
+  }
+
+  uint32_t socket = 0;
+  uint16_t port = 80;
+  if (WIFI_StartServer(socket, WIFI_TCP_PROTOCOL, 1, "Web", port) != WIFI_STATUS_OK) {
+      HAL_UART_Transmit(&huart1, (uint8_t*)"Server Start Failed\r\n", 21, 100);
+  } else {
+      char msg[64];
+      sprintf(msg, "Server Started on Port %d\r\n", port);
+      HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 100);
+  }
+
+  while (1) {
+	  HAL_Delay(10); // Reduce delay to keep loop responsive
+	  // HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin); // Optional LED toggle
+
+      uint8_t remoteIP[4];
+      uint16_t remotePort;
+      // Check for connection with short timeout (10ms)
+      if (WIFI_WaitServerConnection(socket, 10, remoteIP, 4, &remotePort) == WIFI_STATUS_OK) {
+          HAL_UART_Transmit(&huart1, (uint8_t*)"Client Connected\r\n", 18, 100);
+
+          uint8_t rxBuffer[1024];
+          uint16_t rxLen;
+          // Wait for HTTP Request
+          if (WIFI_ReceiveData(socket, rxBuffer, sizeof(rxBuffer)-1, &rxLen, 2000) == WIFI_STATUS_OK) {
+              if (rxLen > 0) {
+                  rxBuffer[rxLen] = 0;
+                  HAL_UART_Transmit(&huart1, (uint8_t*)"Req Received\r\n", 14, 100);
+                  
+                  char *html = "<html><head><title>STM32</title></head><body><h1>Hello from STM32!</h1></body></html>";
+                  char resp[512];
+                  sprintf(resp, "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s", strlen(html), html);
+                  
+                  uint16_t sentLen;
+                  WIFI_SendData(socket, (uint8_t*)resp, strlen(resp), &sentLen, 2000);
+                  HAL_UART_Transmit(&huart1, (uint8_t*)"Resp Sent\r\n", 11, 100);
+                  HAL_Delay(100); // Give time to flush
+              }
+          }
+          
+          WIFI_CloseServerConnection(socket);
+          HAL_UART_Transmit(&huart1, (uint8_t*)"Connection Closed\r\n", 19, 100);
+      }
+  }
 
   /* USER CODE END 2 */
 
@@ -651,6 +782,14 @@ void EXTI1_IRQHandler(void)
 {
   /* Pass control to the HAL Library */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1);
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  if (GPIO_Pin == GPIO_PIN_1)
+  {
+    SPI_WIFI_ISR();
+  }
 }
 
 /* USER CODE END 4 */
