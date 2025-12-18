@@ -17,7 +17,7 @@ Po uruchomieniu mikrokontrolera każdy czujnik jest inicjalizowany. Użyktkownic
 - wektor pola magnetycznego z LIS3MDL
 - przyspieszenie i prędkość kątowa z LSM6DSL
 
-Wywoływanie funkcji obsługujących pomiary odbywa się w Timerze .... (tu mozna napisac jak sie nazywaja te funkcje)
+
 
 ## Opis plików źródłowych
 
@@ -41,13 +41,11 @@ MX_BlueNRG_MS_Init();- funkcja odpowiedzialna za inicjalizację stosu BLE, inicj
 MX_BlueNRG_MS_Process();- odpowiada za przetwarzanie zdarzeń BLE takich jak połączenia, rozłączenia, odczyty i zapisy charakterystyk oraz komunikację
 BLE_SendMessage();- odpowiada za wysłanie wiadomości
 
-Napisana została funkcja BLE_SendLongMessage(), ktora przesyla plik .json w kilku wiadomosciach BLE notify.
+
 
 **Do komunikacji z mikrokontrolerem wykorzystano aplikację nRF Connect.**
 
-### Komunikacja Wi-Fi 
 
-Do uzupelnienia
 
 **Odbiór testowej informacji**
 
@@ -61,10 +59,86 @@ Jeśli długość wynikowego łańcucha przekroczy rozmiar bufora lub nastąpi b
 
 <img width="748" height="326" alt="Zrzut ekranu 2025-11-5 o 18 34 37" src="https://github.com/user-attachments/assets/a93cb34e-984e-43ac-bfc7-a6239a748c1a" />
 
-Utworzony zostal plik plot_and_ThingsBoard.py, który zbiera dane z portu szeregowego i prezentuje je w postaci wykresów oraz przesyła dane na ThingsBoard.
-
-tu fotka
 
 ## Agregacja danych
 
 Plik sensor_data.c integruje trzy czujniki i przygotowuje wyniki pomiarowe w formacie JSON. Funkcja Sensor_GetData() odczytuje bieżące wartości pomiarowe z czujników LSM6DSL, HTS221 i LIS3MDL, a następnie zapisuje je do wspólnej struktury SensorData_t. Z czujnika LSM6DSL pobierane są dane z akcelerometru i żyroskopu (osie X, Y, Z), z HTS221 - temperatura i wilgotność powietrza, natomiast z LIS3MDL - wartości pola magnetycznego w trzech osiach. Każdy pomiar jest sprawdzany pod kątem poprawności, a w przypadku błędu funkcja zwraca kod -1. Następnie wynikowe fragmenty są łączone przy użyciu snprintf().
+
+# Postępy drugiego zespołu
+
+### Optymalizacja głównej pętli programu
+Prace rozpoczęto od zmiany wykorzystania funkcji HAL_delay w pętli while. Zamiast funkcji wywoływanej w pollingu wykorzystano przerwania od Timera, które są znacząco mniej obciążające dla mikroprocesora.
+
+```c
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) 
+{ 
+    if (htim->Instance == TIM7) 
+    { 
+    	flag_send_data = 1; 
+    } 
+} 
+
+...
+// wiele linijek dalej
+
+while (1)
+  {
+	  if (flag_send_data)
+	      {
+	          flag_send_data = 0;  // wyczyść flagę
+
+	          HTS221_Read_Data();
+	          LSM6DSL_Read_Data();
+	          LIS3MDL_Read_Magnetic();
+
+	          if (j_johnson(json_buffer, sizeof(json_buffer)) == 0)
+	          {
+	              HAL_UART_Transmit(&huart1, (uint8_t*)json_buffer, strlen(json_buffer), HAL_MAX_DELAY);
+	          }
+
+            BLE_SendMessage("Hello from STM");
+
+	      }
+    /* USER CODE END WHILE */
+
+  MX_BlueNRG_MS_Process();
+    /* USER CODE BEGIN 3 */
+  }
+```
+
+### Wysyłanie dłuższych wiadomości
+
+Podstawowo funkcja **BLE_notify** posiada payload ograniczony do 20 bajtów. W celu umożliwienia wysłania całej wiadomości, zawartości pliku .json, napisano funkcję **BLE_SendLongMessage()**. Jej zadaniem jest zakolejkowanie wysłania odpowiedniego pakietu
+
+```c
+void BLE_SendLongMessage(char* data) { 
+    uint16_t len = strlen(data); 
+    uint16_t index = 0; 
+    uint8_t chunk_size = 20; 
+    char packet[21]; 
+ 
+    while (index < len) { 
+        uint8_t bytes_to_send = (len - index) >= chunk_size ? chunk_size : (len - index); 
+ 
+        memcpy(packet, &data[index], bytes_to_send); 
+        packet[bytes_to_send] = '\0'; 
+ 
+        BLE_SendMessage(packet); 
+ 
+        index += bytes_to_send; 
+ 
+        HAL_Delay(30); 
+    } 
+} 
+```
+
+### Komunikacja Wi-Fi 
+
+Do uzupelnienia
+
+
+### Generacja wykresów i przesłanie do Thingsboard
+
+Rolą programu **plot_and_ThingsBoard.py** jest pobranie danych z portu UART, odczytane dane są prezentowane na wykresie stoworzonym przy użyciu biblioteki **matplotlib**. Kolejną rolą programu jest wysłanie danych do strony ThingBoard, gdzie dane mogą zostać wykorzystane wedle uznania użytkownika :)
+
+## MIEJSCE NA ZDJĘCIE TBD
