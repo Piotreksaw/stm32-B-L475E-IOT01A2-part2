@@ -134,8 +134,14 @@ void BLE_SendLongMessage(char* data) {
 
 ### Komunikacja Wi-Fi 
 
-Do uzupelnienia
+Próba uruchomienia modułu WiFi jest dostępna na branchu wifi. Jest tam teraz tylko włączona inicjalizacja modułu WiFi i uarta1.
 
+Udało się znacjonalizować moduł WiFi (ISM43340-M4G-L44) oraz wylistować dostępne sieci (chociaż czasami nie wszystkie są widoczne).
+Tryb klienta - działa poprawnie i jest w stanie wyświetlić prostą stronę. Problemem jest jedynie pobranie adresu IP, jest dostępny w logach na terminalu (UART1).
+Tryb AP - działa jedynie tworzenie i rozgłaszanie sieci (można się podłączyć np. telefonem), ale postawiony serwer www nie działa (nie wiem czemu, możliwe że jest to jakiś problem z tym jak jest on wewnętrznie zaimplementowany).
+
+Ogólnie to jest sporo problemów z tym modułem, możne o tym poczytać na np. [https://community.st.com/t5/others-hardware-and-software/soft-ap-does-not-work-with-the-cube-example-for-b-l475e-iot01a/td-p/255034]
+Nie próbowałem aktualizować firmware'u, może to by pomogło, ale nie chciałem zbrickować przez przypadek tego modułu.
 
 ### Generacja wykresów i przesłanie do Thingsboard
 
