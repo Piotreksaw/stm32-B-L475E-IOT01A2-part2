@@ -142,3 +142,13 @@ Do uzupelnienia
 Rolą programu **plot_and_ThingsBoard.py** jest pobranie danych z portu UART, odczytane dane są prezentowane na wykresie stoworzonym przy użyciu biblioteki **matplotlib**. Kolejną rolą programu jest wysłanie danych do strony ThingBoard, gdzie dane mogą zostać wykorzystane wedle uznania użytkownika :)
 ![0170bc87-340e-4f26-8bce-a52e8d4e3ebd](https://github.com/user-attachments/assets/ed88a47b-7099-4944-a10e-0c77d11efe6d)
 
+Parę cennych uwag:
+- W skrypcie należy uzupełnić 'THINGSBOARD_URL' oraz ewentualnie zmienić port COM. 
+- 'THINGSBOARD_URL' można pobrać z pola Check connectivity, z komendy 'curl' dla danego urządzenia.  
+
+
+# Dalsze kroki
+
+Naszym zdaniem warto dokończyć komunikację po BLE, w taki sposób aby płytka na zasilaniu np. bateryjnym, mogła zostać umieszczona za oknem. Skąd będzie się łączyła i wysłała dane po BLE z PC/Raspberry Pi w domu, które następnie będą przesyłały dane do interfejsu smart home np. ThingsBoard ;). Warto też rozważyć wysyłanie danych po WiFi, ale nie udało nam się w pełni dokończyć tej formy komunikacji
+
+Poza tym narzędzia do przetworzenia danych po stronie odbiorczej zostały ukończone. Powodzenia!
