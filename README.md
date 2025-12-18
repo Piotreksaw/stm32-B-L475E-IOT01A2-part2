@@ -142,6 +142,8 @@ Do uzupelnienia
 Rolą programu **plot_and_ThingsBoard.py** jest pobranie danych z portu UART, odczytane dane są prezentowane na wykresie stoworzonym przy użyciu biblioteki **matplotlib**. Kolejną rolą programu jest wysłanie danych do strony ThingBoard, gdzie dane mogą zostać wykorzystane wedle uznania użytkownika :)
 ![0170bc87-340e-4f26-8bce-a52e8d4e3ebd](https://github.com/user-attachments/assets/ed88a47b-7099-4944-a10e-0c77d11efe6d)
 
+![L475E_dashboard_2](https://github.com/user-attachments/assets/cfe01c1d-622b-4d5a-8916-8db12ae5015f)
+
 Parę cennych uwag:
 - W skrypcie należy uzupełnić 'THINGSBOARD_URL' oraz ewentualnie zmienić port COM. 
 - 'THINGSBOARD_URL' można pobrać z pola Check connectivity, z komendy 'curl' dla danego urządzenia.  
